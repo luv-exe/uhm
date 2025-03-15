@@ -1,0 +1,584 @@
+-- Mobile Aimbot Script with Tabbed GUI
+-- Optimized for mobile devices with wall check functionality
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- Local Player and Camera
+local Player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Character = Player.Character or Player.CharacterAdded:Wait()
+
+-- GUI Variables
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MobileAimbotGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+-- Aimbot Settings
+local Settings = {
+    Enabled = false,
+    WallCheck = true,
+    TeamCheck = true,
+    TargetPart = "Head",
+    Sensitivity = 0.5,
+    FOVRadius = 100,
+    ShowFOV = true,
+    FOVColor = Color3.fromRGB(255, 0, 0),
+    MaxDistance = 1000
+}
+
+-- Tabs
+local Tabs = {
+    "Main",
+    "Settings",
+    "Visual",
+    "About"
+}
+
+-- Colors
+local Colors = {
+    Background = Color3.fromRGB(25, 25, 25),
+    TabBar = Color3.fromRGB(35, 35, 35),
+    Button = Color3.fromRGB(45, 45, 45),
+    ButtonHover = Color3.fromRGB(55, 55, 55),
+    Text = Color3.fromRGB(255, 255, 255),
+    Accent = Color3.fromRGB(255, 0, 0),
+    Toggle = {
+        On = Color3.fromRGB(0, 255, 0),
+        Off = Color3.fromRGB(255, 0, 0)
+    }
+}
+
+-- Create the main frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.BackgroundColor3 = Colors.Background
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0.9, 0, 0.7, 0)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+-- Add corner radius
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- Create the title bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.BackgroundColor3 = Colors.TabBar
+TitleBar.Size = UDim2.new(1, 0, 0.1, 0)
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleBar
+
+-- Remove bottom corners
+local TitleCover = Instance.new("Frame")
+TitleCover.Name = "TitleCover"
+TitleCover.BackgroundColor3 = Colors.TabBar
+TitleCover.BorderSizePixel = 0
+TitleCover.Position = UDim2.new(0, 0, 0.5, 0)
+TitleCover.Size = UDim2.new(1, 0, 0.5, 0)
+TitleCover.Parent = TitleBar
+
+-- Title text
+local TitleText = Instance.new("TextLabel")
+TitleText.Name = "TitleText"
+TitleText.BackgroundTransparency = 1
+TitleText.Position = UDim2.new(0, 15, 0, 0)
+TitleText.Size = UDim2.new(0.7, 0, 1, 0)
+TitleText.Font = Enum.Font.GothamBold
+TitleText.Text = "Mobile Aimbot"
+TitleText.TextColor3 = Colors.Text
+TitleText.TextSize = 16
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = TitleBar
+
+-- Close button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.BackgroundTransparency = 1
+CloseButton.Position = UDim2.new(1, -35, 0, 0)
+CloseButton.Size = UDim2.new(0, 35, 1, 0)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Colors.Text
+CloseButton.TextSize = 16
+CloseButton.Parent = TitleBar
+
+-- Minimize button
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.Position = UDim2.new(1, -70, 0, 0)
+MinimizeButton.Size = UDim2.new(0, 35, 1, 0)
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Colors.Text
+MinimizeButton.TextSize = 16
+MinimizeButton.Parent = TitleBar
+
+-- Tab container
+local TabContainer = Instance.new("Frame")
+TabContainer.Name = "TabContainer"
+TabContainer.BackgroundColor3 = Colors.TabBar
+TabContainer.Position = UDim2.new(0, 0, 0.1, 0)
+TabContainer.Size = UDim2.new(1, 0, 0.1, 0)
+TabContainer.Parent = MainFrame
+
+-- Create tab buttons
+local TabButtons = {}
+for i, tabName in ipairs(Tabs) do
+    local TabButton = Instance.new("TextButton")
+    TabButton.Name = tabName .. "Tab"
+    TabButton.BackgroundTransparency = 1
+    TabButton.Position = UDim2.new((i-1) * 0.25, 0, 0, 0)
+    TabButton.Size = UDim2.new(0.25, 0, 1, 0)
+    TabButton.Font = Enum.Font.GothamSemibold
+    TabButton.Text = tabName
+    TabButton.TextColor3 = Colors.Text
+    TabButton.TextSize = 14
+    TabButton.Parent = TabContainer
+    
+    TabButtons[tabName] = TabButton
+end
+
+-- Create the content area
+local ContentArea = Instance.new("Frame")
+ContentArea.Name = "ContentArea"
+ContentArea.BackgroundColor3 = Colors.Background
+ContentArea.BorderSizePixel = 0
+ContentArea.Position = UDim2.new(0, 0, 0.2, 0)
+ContentArea.Size = UDim2.new(1, 0, 0.8, 0)
+ContentArea.Parent = MainFrame
+
+-- Create content frames for each tab
+local ContentFrames = {}
+for _, tabName in ipairs(Tabs) do
+    local ContentFrame = Instance.new("ScrollingFrame")
+    ContentFrame.Name = tabName .. "Content"
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.BorderSizePixel = 0
+    ContentFrame.Size = UDim2.new(1, 0, 1, 0)
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 1.5, 0)
+    ContentFrame.ScrollBarThickness = 4
+    ContentFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+    ContentFrame.Visible = (tabName == "Main") -- Only show Main tab initially
+    ContentFrame.Parent = ContentArea
+    
+    ContentFrames[tabName] = ContentFrame
+end
+
+-- Helper function to create a section label
+local function createSectionLabel(parent, text, position)
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Position = position
+    label.Size = UDim2.new(0.9, 0, 0, 25)
+    label.Font = Enum.Font.GothamBold
+    label.Text = text
+    label.TextColor3 = Colors.Accent
+    label.TextSize = 16
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.AnchorPoint = Vector2.new(0.5, 0)
+    label.Parent = parent
+    return label
+end
+
+-- Helper function to create a toggle button
+local function createToggle(parent, text, position, settingKey)
+    local frame = Instance.new("Frame")
+    frame.BackgroundTransparency = 1
+    frame.Position = position
+    frame.Size = UDim2.new(0.9, 0, 0, 40)
+    frame.AnchorPoint = Vector2.new(0.5, 0)
+    frame.Parent = parent
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.BackgroundTransparency = 1
+    textLabel.Position = UDim2.new(0, 0, 0, 0)
+    textLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.Text = text
+    textLabel.TextColor3 = Colors.Text
+    textLabel.TextSize = 14
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.Parent = frame
+    
+    local toggleButton = Instance.new("Frame")
+    toggleButton.BackgroundColor3 = Settings[settingKey] and Colors.Toggle.On or Colors.Toggle.Off
+    toggleButton.Position = UDim2.new(0.85, 0, 0.5, 0)
+    toggleButton.Size = UDim2.new(0, 40, 0, 20)
+    toggleButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    toggleButton.Parent = frame
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(1, 0)
+    toggleCorner.Parent = toggleButton
+    
+    local toggleCircle = Instance.new("Frame")
+    toggleCircle.BackgroundColor3 = Colors.Text
+    toggleCircle.Position = Settings[settingKey] and UDim2.new(0.75, 0, 0.5, 0) or UDim2.new(0.25, 0, 0.5, 0)
+    toggleCircle.Size = UDim2.new(0, 16, 0, 16)
+    toggleCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+    toggleCircle.Parent = toggleButton
+    
+    local circleCorner = Instance.new("UICorner")
+    circleCorner.CornerRadius = UDim.new(1, 0)
+    circleCorner.Parent = toggleCircle
+    
+    local button = Instance.new("TextButton")
+    button.BackgroundTransparency = 1
+    button.Size = UDim2.new(1, 0, 1, 0)
+    button.Text = ""
+    button.Parent = frame
+    
+    button.MouseButton1Click:Connect(function()
+        Settings[settingKey] = not Settings[settingKey]
+        toggleButton.BackgroundColor3 = Settings[settingKey] and Colors.Toggle.On or Colors.Toggle.Off
+        local targetPosition = Settings[settingKey] and UDim2.new(0.75, 0, 0.5, 0) or UDim2.new(0.25, 0, 0.5, 0)
+        
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(toggleCircle, tweenInfo, {Position = targetPosition})
+        tween:Play()
+    end)
+    
+    return frame
+end
+
+-- Helper function to create a slider
+local function createSlider(parent, text, position, settingKey, min, max, increment)
+    local frame = Instance.new("Frame")
+    frame.BackgroundTransparency = 1
+    frame.Position = position
+    frame.Size = UDim2.new(0.9, 0, 0, 60)
+    frame.AnchorPoint = Vector2.new(0.5, 0)
+    frame.Parent = parent
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.BackgroundTransparency = 1
+    textLabel.Position = UDim2.new(0, 0, 0, 0)
+    textLabel.Size = UDim2.new(1, 0, 0, 20)
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.Text = text .. ": " .. Settings[settingKey]
+    textLabel.TextColor3 = Colors.Text
+    textLabel.TextSize = 14
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.Parent = frame
+    
+    local sliderBack = Instance.new("Frame")
+    sliderBack.BackgroundColor3 = Colors.Button
+    sliderBack.Position = UDim2.new(0, 0, 0.6, 0)
+    sliderBack.Size = UDim2.new(1, 0, 0, 10)
+    sliderBack.Parent = frame
+    
+    local sliderCorner = Instance.new("UICorner")
+    sliderCorner.CornerRadius = UDim.new(0, 5)
+    sliderCorner.Parent = sliderBack
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.BackgroundColor3 = Colors.Accent
+    sliderFill.Position = UDim2.new(0, 0, 0, 0)
+    local percentage = (Settings[settingKey] - min) / (max - min)
+    sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+    sliderFill.Parent = sliderBack
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 5)
+    fillCorner.Parent = sliderFill
+    
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.BackgroundColor3 = Colors.Text
+    sliderButton.Position = UDim2.new(percentage, 0, 0.5, 0)
+    sliderButton.Size = UDim2.new(0, 15, 0, 15)
+    sliderButton.AnchorPoint = Vector2.new(0.5, 0.5)
+    sliderButton.Text = ""
+    sliderButton.Parent = sliderBack
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(1, 0)
+    buttonCorner.Parent = sliderButton
+    
+    local isDragging = false
+    
+    sliderButton.MouseButton1Down:Connect(function()
+        isDragging = true
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+        end
+    end)
+    
+    -- Define updateSlider function before connecting events
+    local function updateSlider(slider, posX)
+        local sliderAbsPosition = slider.AbsolutePosition.X
+        local sliderAbsSize = slider.AbsoluteSize.X
+        
+        local relativePosition = math.clamp((posX - sliderAbsPosition) / sliderAbsSize, 0, 1)
+        
+        -- Update visual elements
+        sliderFill.Size = UDim2.new(relativePosition, 0, 1, 0)
+        sliderButton.Position = UDim2.new(relativePosition, 0, 0.5, 0)
+        
+        -- Update settings value
+        local newValue = min + (relativePosition * (max - min))
+        newValue = math.floor(newValue / increment + 0.5) * increment
+        Settings[settingKey] = newValue
+        
+        -- Update text label
+        textLabel.Text = text .. ": " .. Settings[settingKey]
+    end
+
+    sliderBack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            updateSlider(sliderBack, input.Position.X)
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(sliderBack, input.Position.X)
+        end
+    end)
+    
+    return frame
+end
+
+-- Helper function to create a selector
+local function createSelector(parent, text, position, settingKey, options)
+    local frame = Instance.new("Frame")
+    frame.BackgroundTransparency = 1
+    frame.Position = position
+    frame.Size = UDim2.new(0.9, 0, 0, 40)
+    frame.AnchorPoint = Vector2.new(0.5, 0)
+    frame.Parent = parent
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.BackgroundTransparency = 1
+    textLabel.Position = UDim2.new(0, 0, 0, 0)
+    textLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.Text = text
+    textLabel.TextColor3 = Colors.Text
+    textLabel.TextSize = 14
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.Parent = frame
+    
+    local selector = Instance.new("TextButton")
+    selector.BackgroundColor3 = Colors.Button
+    selector.Position = UDim2.new(0.75, 0, 0.5, 0)
+    selector.Size = UDim2.new(0.45, 0, 0.8, 0)
+    selector.AnchorPoint = Vector2.new(0.5, 0.5)
+    selector.Font = Enum.Font.Gotham
+    selector.Text = Settings[settingKey]
+    selector.TextColor3 = Colors.Text
+    selector.TextSize = 14
+    selector.Parent = frame
+    
+    local selectorCorner = Instance.new("UICorner")
+    selectorCorner.CornerRadius = UDim.new(0, 5)
+    selectorCorner.Parent = selector
+    
+    local currentIndex = table.find(options, Settings[settingKey]) or 1
+    
+    selector.MouseButton1Click:Connect(function()
+        currentIndex = currentIndex % #options + 1
+        Settings[settingKey] = options[currentIndex]
+        selector.Text = Settings[settingKey]
+    end)
+    
+    return frame
+end
+
+-- Fill the Main tab
+local mainTab = ContentFrames["Main"]
+
+createSectionLabel(mainTab, "Aimbot Controls", UDim2.new(0.5, 0, 0.05, 0))
+createToggle(mainTab, "Enable Aimbot", UDim2.new(0.5, 0, 0.15, 0), "Enabled")
+createToggle(mainTab, "Wall Check", UDim2.new(0.5, 0, 0.27, 0), "WallCheck")
+createToggle(mainTab, "Team Check", UDim2.new(0.5, 0, 0.39, 0), "TeamCheck")
+createSlider(mainTab, "Sensitivity", UDim2.new(0.5, 0, 0.51, 0), "Sensitivity", 0.1, 1, 0.1)
+createSlider(mainTab, "Max Distance", UDim2.new(0.5, 0, 0.68, 0), "MaxDistance", 100, 2000, 100)
+
+-- Fill the Settings tab
+local settingsTab = ContentFrames["Settings"]
+
+createSectionLabel(settingsTab, "Target Settings", UDim2.new(0.5, 0, 0.05, 0))
+createSelector(settingsTab, "Target Part", UDim2.new(0.5, 0, 0.15, 0), "TargetPart", {"Head", "Torso", "HumanoidRootPart"})
+createSlider(settingsTab, "FOV Radius", UDim2.new(0.5, 0, 0.27, 0), "FOVRadius", 50, 500, 10)
+
+-- Fill the Visual tab
+local visualTab = ContentFrames["Visual"]
+
+createSectionLabel(visualTab, "Visual Settings", UDim2.new(0.5, 0, 0.05, 0))
+createToggle(visualTab, "Show FOV Circle", UDim2.new(0.5, 0, 0.15, 0), "ShowFOV")
+
+-- Fill the About tab
+local aboutTab = ContentFrames["About"]
+
+createSectionLabel(aboutTab, "About", UDim2.new(0.5, 0, 0.05, 0))
+
+local infoText = Instance.new("TextLabel")
+infoText.BackgroundTransparency = 1
+infoText.Position = UDim2.new(0.5, 0, 0.1, 0)
+infoText.Size = UDim2.new(0.9, 0, 0, 200)
+infoText.Font = Enum.Font.Gotham
+infoText.Text = "Mobile Aimbot v1.0\n\nFeatures:\n- Wall check to prevent aiming through walls\n- Adjustable FOV and sensitivity\n- Team check to avoid targeting teammates\n- Customizable target part\n- Mobile-friendly interface\n\nPress the floating button to toggle UI visibility."
+infoText.TextColor3 = Colors.Text
+infoText.TextSize = 14
+infoText.TextWrapped = true
+infoText.TextXAlignment = Enum.TextXAlignment.Left
+infoText.TextYAlignment = Enum.TextYAlignment.Top
+infoText.AnchorPoint = Vector2.new(0.5, 0)
+infoText.Parent = aboutTab
+
+-- Tab switching logic
+for tabName, button in pairs(TabButtons) do
+    button.MouseButton1Click:Connect(function()
+        for _, contentFrame in pairs(ContentFrames) do
+            contentFrame.Visible = false
+        end
+        
+        ContentFrames[tabName].Visible = true
+        
+        for _, tabButton in pairs(TabButtons) do
+            tabButton.TextColor3 = Colors.Text
+        end
+        
+        button.TextColor3 = Colors.Accent
+    end)
+end
+
+-- Make the Main tab active by default
+TabButtons["Main"].TextColor3 = Colors.Accent
+
+-- Drag functionality for main frame
+local isDragging = false
+local dragInput
+local dragStart
+local startPos
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                isDragging = false
+            end
+        end)
+    end
+end)
+
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and isDragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Floating toggle button
+local FloatingButton = Instance.new("TextButton")
+FloatingButton.Name = "FloatingButton"
+FloatingButton.Size = UDim2.new(0, 50, 0, 50)
+FloatingButton.Position = UDim2.new(0, 20, 0.5, 0)
+FloatingButton.AnchorPoint = Vector2.new(0, 0.5)
+FloatingButton.BackgroundColor3 = Colors.Accent
+FloatingButton.Text = "ðŸŽ¯"
+FloatingButton.TextColor3 = Colors.Text
+FloatingButton.TextSize = 24
+FloatingButton.Font = Enum.Font.GothamBold
+FloatingButton.Parent = ScreenGui
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(1, 0)
+buttonCorner.Parent = FloatingButton
+
+-- Button glow effect
+local Glow = Instance.new("UIStroke")
+Glow.Color = Color3.fromRGB(255, 0, 0)
+Glow.Thickness = 2
+Glow.Transparency = 0
+Glow.Parent = FloatingButton
+
+-- Pulse animation for the glow
+spawn(function()
+    while wait(0.05) do
+        for i = 0, 1, 0.05 do
+            Glow.Transparency = i
+            wait(0.05)
+        end
+        for i = 1, 0, -0.05 do
+            Glow.Transparency = i
+            wait(0.05)
+        end
+    end
+end)
+
+-- Button actions
+FloatingButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+-- FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = Settings.ShowFOV and Settings.Enabled
+FOVCircle.Radius = Settings.FOVRadius
+FOVCircle.Color = Settings.FOVColor
+FOVCircle.Thickness = 1.5
+FOVCircle.Filled = false
+FOVCircle.Transparency = 1
+FOVCircle.NumSides = 64
+
+-- Simple and reliable wall check using Ray casting
+local function isWallBetween(origin, target)
+    -- Basic error checking
+    if not origin or not target then
+        return false
+    end
+    
+    -- Support both Position property and direct Vector3
+    local targetPosition = target
+    if typeof(target) == "Instance" and target:IsA("BasePart") then
+        targetPosition = target.Position
+    end
+    
+    -- Calculate direction and distance
+    local direction = targetPosition - origin
+    local distance = direction.Magnitude
+    
+    -- Create ignore list starting with player's character
+    local ignoreList = {}
+    if Player and Player.Character then
+        table.insert(ignoreList, Player.Character)
+    end
+    
+    -- Find the target player and 
